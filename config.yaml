@@ -1,0 +1,17 @@
+database:
+  data_db_url: "sqlite:///data.db"
+  pipeline_db_url: "sqlite:///pipeline.db"  # <--- NEW
+
+api:
+  host: "127.0.0.1"
+  port: 8000
+  secret_key: "supersecretkey"
+
+logging:
+  file: "/absolute/path/to/pipeline.log" # Use absolute path for Cron
+  level: "INFO"
+
+system:
+  project_root: "/home/dberns/Projects/github/DanielBerns/news_weaver/src/news_weaver"
+  uv_path: "/home/dberns/.cargo/bin/uv"  # <--- FIND YOUR UV PATH WITH `which uv`
+  scraped_data_dir: "/home/dberns/tmp/scraped_data"
