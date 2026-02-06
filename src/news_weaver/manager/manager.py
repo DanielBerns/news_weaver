@@ -48,6 +48,7 @@ Base.metadata.create_all(engine)
 SOURCE_COMMENT_MARKER = "ETL_PIPELINE_SOURCE"
 TRANSFORMER_COMMENT_MARKER = "ETL_PIPELINE_TRANSFORMER"
 
+
 def ensure_wrappers_exist():
     """
     Generates bash wrapper scripts that use 'uv run' to execute the python components.
@@ -57,8 +58,8 @@ def ensure_wrappers_exist():
     uv_path = CONFIG["system"].get("uv_path", "uv") # Default to 'uv' if not set, but explicit path is safer for cron
 
     wrappers = {
-        "run_extractor.sh": "extractor.py",
-        "run_transformer.sh": "transformer.py"
+        "run_extractor.sh": "src/news_weaver/extractor/extractor.py",
+        "run_transformer.sh": "src/news_weaver/transformer/transformer.py"
     }
 
     generated_paths = {}

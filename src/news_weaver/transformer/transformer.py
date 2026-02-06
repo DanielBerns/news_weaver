@@ -210,7 +210,8 @@ def process_file_record(file_record: ScrapedFile, db_session: Session):
             "mimetype": mime
         }
 
-        if "html" in mime:
+        # if "html" in mime:
+        if "html" in mime or "xml" in mime:
             title, content = extract_text_from_html(path)
             endpoint = "articles"
             payload.update({"title": title, "content": content, "language": "en"})

@@ -8,10 +8,10 @@ api:
   secret_key: "supersecretkey"
 
 logging:
-  file: "/absolute/path/to/pipeline.log" # Use absolute path for Cron
+  file: "/home/dberns/Projects/github/DanielBerns/news_weaver/pipeline.log" # Use absolute path for Cron
   level: "INFO"
 
 system:
-  project_root: "/home/dberns/Projects/github/DanielBerns/news_weaver/src/news_weaver"
-  uv_path: "/home/dberns/.cargo/bin/uv"  # <--- FIND YOUR UV PATH WITH `which uv`
+  project_root: "/home/dberns/Projects/github/DanielBerns/news_weaver"
+  uv_path: "/home/dberns/.local/bin/uv"  # <--- FIND YOUR UV PATH WITH `which uv`
   scraped_data_dir: "/home/dberns/tmp/scraped_data"
