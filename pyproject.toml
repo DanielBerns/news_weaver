@@ -18,6 +18,7 @@ dependencies = [
     "pytesseract>=0.3.13",
     "python-crontab>=3.3.0",
     "python-docx>=1.2.0",
+    "python-json-logger>=3.3.0",
     "pyyaml>=6.0.3",
     "sqlalchemy>=2.0.46",
     "uvicorn>=0.40.0",
@@ -25,7 +26,35 @@ dependencies = [
 
 [project.scripts]
 news-weaver = "news_weaver:main"
+init-db = "news_weaver.cli.init_db:main"
 
 [build-system]
 requires = ["uv_build>=0.9.5,<0.10.0"]
 build-backend = "uv_build"
+
+# ---------------------------------------------------------------------------
+# Quality Assurance Tools
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]  # pycodestyle, pyflakes, isort
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "mypy>=2.3.0",
+    "pytest>=9.1.1",
+    "ruff>=0.16.2",
+]
