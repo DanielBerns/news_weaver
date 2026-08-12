@@ -1,18 +1,21 @@
-import os
+"""Transformer — processes staged raw files and pushes data to the Loader API.
+
+Uses SQLAlchemy 2.0 select() queries and get_config() singleton.
+"""
 import sys
-import time
-from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 import httpx
-from news_weaver.common.config import CONFIG, setup_logger
-from news_weaver.common.database import PipelineSessionLocal
-from news_weaver.common.models import Source, ScrapedFile
+from sqlalchemy import select
 
-# Optional imports
+from news_weaver.common.config import get_config, setup_logger
+from news_weaver.common.database import PipelineSessionLocal
+from news_weaver.common.models import ScrapedFile, Source
+
+# Optional imports — fail fast with a helpful message
 try:
-    from bs4 import BeautifulSoup
-    from pypdf import PdfReader
     import pytesseract
+    from bs4 import BeautifulSoup
     from PIL import Image
 except ImportError:
     print("Missing dependencies: bs4, pypdf, pytesseract, pillow")
@@ -20,41 +23,51 @@ except ImportError:
 
 logger = setup_logger("Transformer")
 
-def extract_text(file_record: ScrapedFile) -> dict:
-    """Returns a dict payload suitable for the Loader API based on mimetype."""
+
+def extract_text(file_record: ScrapedFile) -> dict[str, Any]:
+    """Return a payload dict for the Loader API based on mimetype."""
     path = file_record.local_path
     mime = file_record.mimetype.lower()
-    payload = {"source_file_id": file_record.id, "mimetype": mime}
+    payload: dict[str, Any] = {
+        "source_file_id": file_record.id,
+        "mimetype": mime,
+    }
 
     if "html" in mime:
-        with open(path, "r", errors="ignore") as f:
-            soup = BeautifulSoup(f, "html.parser")
+        with open(path, "r", errors="ignore") as fh:
+            soup = BeautifulSoup(fh, "html.parser")
         payload["endpoint"] = "articles"
-        payload.update({
-            "title": soup.title.string if soup.title else "No Title",
-            "content": soup.get_text(separator="\n"),
-            "language": "en"
-        })
+        payload.update(
+            {
+                "title": soup.title.string if soup.title else "No Title",
+                "content": soup.get_text(separator="\n"),
+                "language": "en",
+            }
+        )
     elif "image" in mime:
         payload["endpoint"] = "images"
         img = Image.open(path)
-        payload.update({
-            "extracted_text": pytesseract.image_to_string(img).strip(),
-            "detected_objects": [],
-            "image_metadata": {}
-        })
+        payload.update(
+            {
+                "extracted_text": pytesseract.image_to_string(img).strip(),
+                "detected_objects": [],
+                "image_metadata": {},
+            }
+        )
     else:
         # Generic document fallback
         payload["endpoint"] = "documents"
-        with open(path, "r", errors="ignore") as f:
-            payload.update({"filename": file_record.filename, "content": f.read()})
+        with open(path, "r", errors="ignore") as fh:
+            payload.update({"filename": file_record.filename, "content": fh.read()})
 
     return payload
 
-def send_to_loader(payload: dict) -> bool:
-    api_cfg = CONFIG["api"]
-    url = f"http://{api_cfg['host']}:{api_cfg['port']}/{payload.pop('endpoint')}"
-    headers = {"X-API-Key": api_cfg["secret_key"]}
+
+def send_to_loader(payload: dict[str, Any]) -> bool:
+    api_cfg = get_config().api
+    endpoint = payload.pop("endpoint")
+    url = f"http://{api_cfg.host}:{api_cfg.port}/{endpoint}"
+    headers = {"X-API-Key": api_cfg.secret_key}
 
     try:
         resp = httpx.post(url, json=payload, headers=headers, timeout=10.0)
@@ -63,10 +76,12 @@ def send_to_loader(payload: dict) -> bool:
         logger.warning(f"Loader API error: {e}")
         return False
 
-def process_file(file_record, session):
+
+def process_file(file_record: ScrapedFile, session: Any) -> None:
     try:
-        # Get URL from source relation
-        source = session.query(Source).filter(Source.id == file_record.source_id).first()
+        source = session.execute(
+            select(Source).where(Source.id == file_record.source_id)
+        ).scalar_one_or_none()
         url = source.url if source else "unknown"
 
         payload = extract_text(file_record)
@@ -84,28 +99,35 @@ def process_file(file_record, session):
     finally:
         session.commit()
 
-def main():
+
+def main() -> None:
     session = PipelineSessionLocal()
     try:
-        pending = session.query(ScrapedFile).filter(
-            ScrapedFile.status.in_(["SCRAPED", "LOAD_FAILED"])
-        ).limit(50).all()
+        pending = list(
+            session.execute(
+                select(ScrapedFile).where(
+                    ScrapedFile.status.in_(["SCRAPED", "LOAD_FAILED"])
+                ).limit(50)
+            ).scalars()
+        )
 
         if not pending:
             return
 
         logger.info(f"Processing {len(pending)} files...")
 
-        # Mark processing
-        for f in pending: f.status = "PROCESSING"
+        # Mark as processing in one commit
+        for f in pending:
+            f.status = "PROCESSING"
         session.commit()
 
-        # Simple serial processing for SQLite safety (or use ThreadPool if DB allows)
+        # Serial processing for SQLite safety
         for f in pending:
             process_file(f, session)
 
     finally:
         session.close()
+
 
 if __name__ == "__main__":
     main()

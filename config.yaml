@@ -1,17 +1,17 @@
 database:
   data_db_url: "sqlite:///data.db"
-  pipeline_db_url: "sqlite:///pipeline.db"  # <--- NEW
+  pipeline_db_url: "sqlite:///pipeline.db"
 
 api:
   host: "127.0.0.1"
   port: 8000
-  secret_key: "supersecretkey"
+  # secret_key is NOT stored here. Set the NEWS_WEAVER_SECRET_KEY environment variable.
 
 logging:
-  file: "/home/dberns/Projects/github/DanielBerns/news_weaver/pipeline.log" # Use absolute path for Cron
+  file: "pipeline.log"  # relative to project root (where cron wrappers cd to)
   level: "INFO"
 
 system:
-  project_root: "/home/dberns/Projects/github/DanielBerns/news_weaver"
-  uv_path: "/home/dberns/.local/bin/uv"  # <--- FIND YOUR UV PATH WITH `which uv`
-  scraped_data_dir: "/home/dberns/tmp/scraped_data"
+  project_root: "."  # resolved to absolute Path at runtime
+  uv_path: "uv"      # relies on PATH; override if uv is not on PATH
+  scraped_data_dir: "scraped_data"
